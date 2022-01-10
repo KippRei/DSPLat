@@ -290,6 +290,8 @@ public class Conductor : MonoBehaviour
     void LoadNoteChart(int chartPos)
     {
         noteInputs.Clear();
+        nextNoteInputs.Clear();
+
         missedMeasure = false;
 
         switch (chart[chartPos][0])
@@ -389,10 +391,10 @@ public class Conductor : MonoBehaviour
 
     void UpdateNextNoteUI()
     {
-        var prevNotesDisplay = GameObject.FindGameObjectsWithTag("nextArrows");
-        foreach (var prevNote in prevNotesDisplay)
+        var prevNextNotesDisplay = GameObject.FindGameObjectsWithTag("nextArrows");
+        foreach (var prevNextNote in prevNextNotesDisplay)
         {
-            Destroy(prevNote);
+            Destroy(prevNextNote);
         }
         for (int i = 0; i < nextNoteInputs.Count; i++)
         {
