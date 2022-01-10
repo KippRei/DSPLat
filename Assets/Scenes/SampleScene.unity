@@ -1453,9 +1453,9 @@ MonoBehaviour:
   tickSFX: {fileID: 8300000, guid: 520197fdbbbb6994988aeb7767d87d5a, type: 3}
   tick1SFX: {fileID: 8300000, guid: 1c64cb9a1d91922469b6fe03f47dd63d, type: 3}
   track: {fileID: 8300000, guid: c3d283cd059ab6344810f21449e626ac, type: 3}
-  bpm: 122
-  offset: 9.95
-  inputLag: 0
+  bpm: 120
+  offset: 2.55
+  inputLag: 0.17
   subdivisions: 8
   leftArrow: {fileID: 8957038720549367162, guid: eacb367410f90934982e262e1f00b58a, type: 3}
   rightArrow: {fileID: 4808383713874248889, guid: dc45ef99d2858424dbefb77a9688bb3a, type: 3}
@@ -1486,7 +1486,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 114fd025d51231a4cb18c0312c224e22, type: 3}
+  m_audioClip: {fileID: 8300000, guid: c3d283cd059ab6344810f21449e626ac, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 0.782
   m_Pitch: 1

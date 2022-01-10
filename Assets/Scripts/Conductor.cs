@@ -23,20 +23,19 @@ public class Conductor : MonoBehaviour
     private int count = 1; // counts beats per measure
     public float bpm = 120;
     public float offset = 0;
-    public float inputLag = .15f;
+    public float inputLag = 0f;
     public int subdivisions = 4;
-    private int newSubdivs = 4;
+    private int newSubdivs = 8;
     private float timePerMeasure;
-    private double startOfMeasure;
     private double currentTime;
     private double lastTime;
     private double fourthBeat;
     private double startTime; // start time for song, allows buffering to ensure proper sync with video
     private int tally = 0;
-    private float cushionForFirstBeat = .15f;
 
-    private List<string> noteInputs = new List<string>(); // arrows on screen for measure
-    private bool inputsOk = true; // checks player inputs vs displayed arrows and sets flag
+    private List<string> noteInputs = new List<string>(); // arrows on screen for current measure
+    private List<string> nextNoteInputs = new List<string>(); // preview/next arrows displayed under current
+    private bool inputsOk = false; // checks player inputs vs displayed arrows and sets flag
     private bool missedMeasure = false; // if wrong arrow is hit, the measure will be missed
     private int chartPosition = 0;
 
@@ -46,16 +45,21 @@ public class Conductor : MonoBehaviour
     public GameObject rightArrow;
     public GameObject upArrow;
     public GameObject downArrow;
+    public GameObject nextLeftArrow;
+    public GameObject nextRightArrow;
+    public GameObject nextUpArrow;
+    public GameObject nextDownArrow;
+
+    private bool horizontalBtnDown = false;
+    private bool verticalBtnDown = false;
 
 
     // Start is called before the first frame update
     void Start()
     {
-        timePerMeasure = 60 / bpm * 4;
+        timePerMeasure = (60 / bpm) * 4;
         audioSource = GetComponent<AudioSource>();
         lastTime = AudioSettings.dspTime + offset;
-        startOfMeasure = lastTime - cushionForFirstBeat;
-        fourthBeat = startOfMeasure + ((timePerMeasure / subdivisions) * 3) + cushionForFirstBeat + .05;
         blockScale = block.transform.localScale;
         circleScale = circle.transform.localScale;
         chart = System.IO.File.ReadAllLines(@"Assets\Charts\chart.txt");
@@ -71,8 +75,58 @@ public class Conductor : MonoBehaviour
         {
             audioSource.PlayScheduled(startTime);
         }
-               
+        CheckForInput();     
         TimingUpdate();
+    }
+
+    string DPadInput()
+    {
+        if (Input.GetAxisRaw("Horizontal") > 0 && horizontalBtnDown == false)
+        {
+            horizontalBtnDown = true;
+            return "right";
+        }
+        if (Input.GetAxisRaw("Horizontal") < 0 && horizontalBtnDown == false)
+        {
+            horizontalBtnDown = true;
+            return "left";
+        }
+        if (Input.GetAxisRaw("Vertical") < 0 && verticalBtnDown == false)
+        {
+            verticalBtnDown = true;
+            return "down";
+        }
+        if (Input.GetAxisRaw("Vertical") > 0 && verticalBtnDown == false)
+        {
+            verticalBtnDown = true;
+            return "up";
+        }
+        return "none";
+    }
+
+    void CheckForInput()
+    {
+        if (Input.GetAxisRaw("Horizontal") == 0 && horizontalBtnDown == true)
+        {
+            horizontalBtnDown = false;
+        }
+        if (Input.GetAxisRaw("Vertical") == 0 && verticalBtnDown == true)
+        {
+            verticalBtnDown = false;
+        }
+        if (Input.GetButtonDown("X"))
+        {
+            Debug.Log("X");
+            CheckInput("X");
+        }
+        if (Input.GetAxisRaw("Horizontal") != 0)
+        {
+            CheckInput(DPadInput());
+        }
+       if (Input.GetAxisRaw("Vertical") != 0)
+        {
+            CheckInput(DPadInput());
+        }
     }
 
     void TimingUpdate()
@@ -80,32 +134,30 @@ public class Conductor : MonoBehaviour
         currentTime = AudioSettings.dspTime;
         if (currentTime - lastTime >= timePerMeasure / subdivisions)
         {
-            /*fourthBeat = startOfMeasure + ((timePerMeasure / subdivisions) * 3) + cushionForFirstBeat + .05;*/
             if (count < 4)
             {
+                audioSource.PlayOneShot(tickSFX, .2f);
+                if (count == 1)
+                {
+
+                    Pulse("block");
+                }
+                lastTime += timePerMeasure / subdivisions;
+                if (count == 2)
+                {
+                    fourthBeat = lastTime + (timePerMeasure / subdivisions) * 2;
+                }
                 count++;
-                if (count == 4)
-                {
-                    StartCoroutine(Pulse("circle"));
-                }
-                else
-                {
-                    StartCoroutine(Pulse("block"));
-                }
             }
             else
             {
-                StartCoroutine(Pulse("block"));
-                /*startOfMeasure += (timePerMeasure / subdivisions) * 4;*/
+                audioSource.PlayOneShot(tick1SFX, 1f);
+                Pulse("circle");
+                lastTime += timePerMeasure / subdivisions;
+                subdivisions = newSubdivs;
                 count = 1;
-                inputsOk = false;
             }
-            if (count == 1)
-            {
-                fourthBeat = lastTime + ((timePerMeasure / newSubdivs) * 4);
-            }
-            lastTime += timePerMeasure / subdivisions;
-            subdivisions = newSubdivs;
+
             UIUpdate();
         }
     }
@@ -116,23 +168,20 @@ public class Conductor : MonoBehaviour
         tallyDisplay.text = tally.ToString();
     }
 
-    IEnumerator Pulse(string type)
+    void Pulse(string type)
     {
         if (type == "block")
         {
-            audioSource.PlayOneShot(tickSFX, .7f);
-            Vector3 tempScale = block.transform.localScale + new Vector3( .1f, .1f, .1f);
-            block.transform.localScale = tempScale;
-            yield return new WaitForSeconds(.1f);
-            block.transform.localScale = blockScale;
+
+            block.transform.localScale = block.transform.localScale + new Vector3(.1f, .1f, .1f);
+            circle.transform.localScale = circle.transform.localScale - new Vector3(.1f, .1f, .1f);
+
         }
         else if (type == "circle")
         {
-            audioSource.PlayOneShot(tick1SFX, .3f);
-            Vector3 tempScale = circle.transform.localScale + new Vector3(.1f, .1f, .1f);
-            circle.transform.localScale = tempScale;
-            yield return new WaitForSeconds(.001f);
-            circle.transform.localScale = circleScale;
+            block.transform.localScale = block.transform.localScale - new Vector3( .1f, .1f, .1f);
+            circle.transform.localScale = circle.transform.localScale + new Vector3(.1f, .1f, .1f); ;
+
             chartPosition++;
             LoadNoteChart(chartPosition);
         }
@@ -140,10 +189,11 @@ public class Conductor : MonoBehaviour
 
     void CheckInput(string buttonPressed)
     {
-        float timingWindow = .04f;
+        float timingWindow = .08f;
+        double timePressed = AudioSettings.dspTime - inputLag;
+
         if (buttonPressed == "X" || buttonPressed == "O")
         {
-            double timePressed = AudioSettings.dspTime - inputLag;
             double target = fourthBeat;
             Debug.Log("Pressed: " + timePressed);
             Debug.Log("Target:" + target);
@@ -259,7 +309,7 @@ public class Conductor : MonoBehaviour
         }
 
         for (int i = 0; i < chart[chartPos].Length; i++)
-        {          
+        {
             if (chart[chartPos][i] == 'l')
             {
                 noteInputs.Add("left");
@@ -275,6 +325,27 @@ public class Conductor : MonoBehaviour
             else if (chart[chartPos][i] == 'd')
             {
                 noteInputs.Add("down");
+            }
+        }
+
+        int nextPos = chartPos + 1;
+        for (int i = 0; i < chart[nextPos].Length; i++)
+        {
+            if (chart[nextPos][i] == 'l')
+            {
+                nextNoteInputs.Add("left");
+            }
+            else if (chart[nextPos][i] == 'r')
+            {
+                nextNoteInputs.Add("right");
+            }
+            else if (chart[nextPos][i] == 'u')
+            {
+                nextNoteInputs.Add("up");
+            }
+            else if (chart[nextPos][i] == 'd')
+            {
+                nextNoteInputs.Add("down");
             }
         }
         UpdateNoteUI();
@@ -313,35 +384,73 @@ public class Conductor : MonoBehaviour
                 down.transform.parent = GameObject.Find("Square").transform;
             }
         }
+        UpdateNextNoteUI();
     }
 
-    void OnLeft()
+    void UpdateNextNoteUI()
     {
-        CheckInput("left");
+        var prevNotesDisplay = GameObject.FindGameObjectsWithTag("nextArrows");
+        foreach (var prevNote in prevNotesDisplay)
+        {
+            Destroy(prevNote);
+        }
+        for (int i = 0; i < nextNoteInputs.Count; i++)
+        {
+            string note = nextNoteInputs[i];
+            float xLoc = -3.35f + (.85f * (float)i);
+            float yLoc = -6.12f;
+            if (note == "left")
+            {
+                GameObject left = Instantiate(nextLeftArrow, new Vector3(xLoc, yLoc, -1), Quaternion.identity) as GameObject;
+                left.transform.parent = GameObject.Find("NextPattern").transform;
+            }
+            else if (note == "right")
+            {
+                GameObject right = Instantiate(nextRightArrow, new Vector3(xLoc, yLoc, -1), Quaternion.identity) as GameObject;
+                right.transform.parent = GameObject.Find("NextPattern").transform;
+            }
+            else if (note == "up")
+            {
+                GameObject up = Instantiate(nextUpArrow, new Vector3(xLoc, yLoc, -1), Quaternion.identity) as GameObject;
+                up.transform.parent = GameObject.Find("NextPattern").transform;
+            }
+            else if (note == "down")
+            {
+                GameObject down = Instantiate(nextDownArrow, new Vector3(xLoc, yLoc, -1), Quaternion.identity) as GameObject;
+                down.transform.parent = GameObject.Find("NextPattern").transform;
+            }
+        }
     }
 
-    void OnRight()
-    {
-        CheckInput("right");
-    }
+    /*    #region input
+        void OnLeft()
+        {
+            CheckInput("left");
+        }
 
-    void OnUp()
-    {
-        CheckInput("up");
-    }
+        void OnRight()
+        {
+            CheckInput("right");
+        }
 
-    void OnDown()
-    {
-        CheckInput("down");
-    }
+        void OnUp()
+        {
+            CheckInput("up");
+        }
 
-    void OnX()
-    {
-        CheckInput("X");
-    }
+        void OnDown()
+        {
+            CheckInput("down");
+        }
 
-    void OnO()
-    {
-        CheckInput("O");
-    }
+        void OnX()
+        {
+            CheckInput("X");
+        }
+
+        void OnO()
+        {
+            CheckInput("O");
+        }
+        #endregion*/
 }
