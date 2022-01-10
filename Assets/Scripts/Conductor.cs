@@ -23,7 +23,9 @@ public class Conductor : MonoBehaviour
     private int count = 1; // counts beats per measure
     public float bpm = 120;
     public float offset = 0;
+    public float inputLag = .15f;
     public int subdivisions = 4;
+    private int newSubdivs = 4;
     private float timePerMeasure;
     private double startOfMeasure;
     private double currentTime;
@@ -31,13 +33,14 @@ public class Conductor : MonoBehaviour
     private double fourthBeat;
     private double startTime; // start time for song, allows buffering to ensure proper sync with video
     private int tally = 0;
+    private float cushionForFirstBeat = .15f;
 
     private List<string> noteInputs = new List<string>(); // arrows on screen for measure
-    private List<string> playerNoteInputs = new List<string>(); // players arrow input for measure
     private bool inputsOk = true; // checks player inputs vs displayed arrows and sets flag
-    private bool audioStarted = false; // check PCM sample of audio track to ensure playing then set flag
     private bool missedMeasure = false; // if wrong arrow is hit, the measure will be missed
-    private int difficulty = 1;
+    private int chartPosition = 0;
+
+    private string[] chart;
 
     public GameObject leftArrow;
     public GameObject rightArrow;
@@ -48,15 +51,15 @@ public class Conductor : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        LoadNoteChart(difficulty);
         timePerMeasure = 60 / bpm * 4;
         audioSource = GetComponent<AudioSource>();
         lastTime = AudioSettings.dspTime + offset;
-        // Subtracted .15 to allow for slightly early input at beginning of measure
-        startOfMeasure = lastTime - .15;
-        fourthBeat = startOfMeasure + (timePerMeasure / subdivisions * 3) + .2;
+        startOfMeasure = lastTime - cushionForFirstBeat;
+        fourthBeat = startOfMeasure + ((timePerMeasure / subdivisions) * 3) + cushionForFirstBeat + .05;
         blockScale = block.transform.localScale;
         circleScale = circle.transform.localScale;
+        chart = System.IO.File.ReadAllLines(@"Assets\Charts\chart.txt");
+        LoadNoteChart(chartPosition);
 
         startTime = AudioSettings.dspTime + 2f;
     }
@@ -68,45 +71,49 @@ public class Conductor : MonoBehaviour
         {
             audioSource.PlayScheduled(startTime);
         }
-
-        tallyDisplay.text = tally.ToString();
-        TimingUpdate(subdivisions);
+               
+        TimingUpdate();
     }
 
-    void TimingUpdate(int subdivs)
+    void TimingUpdate()
     {
         currentTime = AudioSettings.dspTime;
-        if (currentTime - lastTime >= timePerMeasure / subdivs)
+        if (currentTime - lastTime >= timePerMeasure / subdivisions)
         {
-            fourthBeat = startOfMeasure + (timePerMeasure / subdivs * 3) + .2;
+            /*fourthBeat = startOfMeasure + ((timePerMeasure / subdivisions) * 3) + cushionForFirstBeat + .05;*/
             if (count < 4)
             {
                 count++;
                 if (count == 4)
                 {
-                    startOfMeasure += timePerMeasure / subdivisions * 4;
                     StartCoroutine(Pulse("circle"));
                 }
                 else
                 {
                     StartCoroutine(Pulse("block"));
                 }
-                counterDisplay.text = count.ToString();
             }
             else
             {
                 StartCoroutine(Pulse("block"));
+                /*startOfMeasure += (timePerMeasure / subdivisions) * 4;*/
                 count = 1;
                 inputsOk = false;
-                counterDisplay.text = count.ToString();
             }
-            lastTime += timePerMeasure / subdivs;
+            if (count == 1)
+            {
+                fourthBeat = lastTime + ((timePerMeasure / newSubdivs) * 4);
+            }
+            lastTime += timePerMeasure / subdivisions;
+            subdivisions = newSubdivs;
+            UIUpdate();
         }
     }
 
     void UIUpdate()
     {
-
+        counterDisplay.text = count.ToString();
+        tallyDisplay.text = tally.ToString();
     }
 
     IEnumerator Pulse(string type)
@@ -124,43 +131,40 @@ public class Conductor : MonoBehaviour
             audioSource.PlayOneShot(tick1SFX, .3f);
             Vector3 tempScale = circle.transform.localScale + new Vector3(.1f, .1f, .1f);
             circle.transform.localScale = tempScale;
-            yield return new WaitForSeconds(timePerMeasure / (subdivisions / 2));
+            yield return new WaitForSeconds(.001f);
             circle.transform.localScale = circleScale;
-            yield return new WaitForSeconds(timePerMeasure / (subdivisions / 2));
-            LoadNoteChart(difficulty);
+            chartPosition++;
+            LoadNoteChart(chartPosition);
         }
     }
 
     void CheckInput(string buttonPressed)
     {
+        float timingWindow = .04f;
         if (buttonPressed == "X" || buttonPressed == "O")
         {
-            double timePressed = AudioSettings.dspTime;
+            double timePressed = AudioSettings.dspTime - inputLag;
             double target = fourthBeat;
-            Debug.Log(timePressed);
-            Debug.Log(target);
+            Debug.Log("Pressed: " + timePressed);
+            Debug.Log("Target:" + target);
+            Debug.Log("Subdivs: " + subdivisions);
+            Debug.Log("");
 
-            if (timePressed >= target - .2 && timePressed <= target + .2 && inputsOk && !missedMeasure)
+            if (timePressed >= target - timingWindow && timePressed <= target + timingWindow && inputsOk && !missedMeasure)
             {
                 accuracyDisplay.text = "Good input";
                 tally++;
-                if (difficulty < 7)
-                {
-                    difficulty++;
-                }
             }
-            else if (timePressed >= target - .2 && timePressed <= target + .2 && !inputsOk)
+            else if (timePressed >= target - timingWindow && timePressed <= target + timingWindow && !inputsOk)
             {
                 accuracyDisplay.text = "Bad input";
                 tally = 0;
-                difficulty = 1;
             }
             else
             {
                 accuracyDisplay.text = "Miss";
                 missedMeasure = true;
                 tally = 0;
-                difficulty = 1;
             }
         }
         else if (noteInputs.Count > 0 && !missedMeasure)
@@ -233,26 +237,42 @@ public class Conductor : MonoBehaviour
         }
     }
 
-    void LoadNoteChart(int diff)
+    void LoadNoteChart(int chartPos)
     {
         noteInputs.Clear();
         missedMeasure = false;
-        for (int i = 0; i < diff; i++)
+
+        switch (chart[chartPos][0])
         {
-            int randNote = Random.Range(0, 4);
-            if (randNote == 0)
+            case '4':
+                newSubdivs = 4;
+                break;
+            case '8':
+                newSubdivs = 8;
+                break;
+            case '1':
+                newSubdivs = 16;
+                break;
+            case '3':
+                newSubdivs = 32;
+                break;
+        }
+
+        for (int i = 0; i < chart[chartPos].Length; i++)
+        {          
+            if (chart[chartPos][i] == 'l')
             {
                 noteInputs.Add("left");
             }
-            else if (randNote == 1)
+            else if (chart[chartPos][i] == 'r')
             {
                 noteInputs.Add("right");
             }
-            else if (randNote == 2)
+            else if (chart[chartPos][i] == 'u')
             {
                 noteInputs.Add("up");
             }
-            else if (randNote == 3)
+            else if (chart[chartPos][i] == 'd')
             {
                 noteInputs.Add("down");
             }

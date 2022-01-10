@@ -1455,6 +1455,7 @@ MonoBehaviour:
   track: {fileID: 8300000, guid: c3d283cd059ab6344810f21449e626ac, type: 3}
   bpm: 122
   offset: 9.95
+  inputLag: 0
   subdivisions: 8
   leftArrow: {fileID: 8957038720549367162, guid: eacb367410f90934982e262e1f00b58a, type: 3}
   rightArrow: {fileID: 4808383713874248889, guid: dc45ef99d2858424dbefb77a9688bb3a, type: 3}
