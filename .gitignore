@@ -367,3 +367,4 @@ FodyWeavers.xsd
 *.csproj
 /Temp/*
 /ProjectSettings/*
+/Assets/Sounds

@@ -21,12 +21,12 @@ public class Conductor : MonoBehaviour
     AudioSource audioSource;
 
     private int count = 1; // counts beats per measure
-    public float bpm = 120;
-    public float offset = 0;
-    public float inputLag = 0f;
+    public double bpm = 120;
+    public double offset = 0;
+    public double inputLag = 0f;
     public int subdivisions = 4;
     private int newSubdivs = 8;
-    private float timePerMeasure;
+    private double timePerMeasure;
     private double currentTime;
     private double lastTime;
     private double fourthBeat;
@@ -52,7 +52,6 @@ public class Conductor : MonoBehaviour
 
     private bool horizontalBtnDown = false;
     private bool verticalBtnDown = false;
-
 
     // Start is called before the first frame update
     void Start()
@@ -116,7 +115,6 @@ public class Conductor : MonoBehaviour
         }
         if (Input.GetButtonDown("X"))
         {
-            Debug.Log("X");
             CheckInput("X");
         }
         if (Input.GetAxisRaw("Horizontal") != 0)
@@ -137,27 +135,26 @@ public class Conductor : MonoBehaviour
             if (count < 4)
             {
                 audioSource.PlayOneShot(tickSFX, .2f);
-                if (count == 1)
-                {
-
-                    Pulse("block");
-                }
                 lastTime += timePerMeasure / subdivisions;
                 if (count == 2)
                 {
-                    fourthBeat = lastTime + (timePerMeasure / subdivisions) * 2;
+                    Pulse("block");
+                   // Debug.Log("New Target = " + fourthBeat);
                 }
+                Debug.Log("Count = " + count + " Time = " + lastTime);
                 count++;
             }
             else
             {
                 audioSource.PlayOneShot(tick1SFX, 1f);
                 Pulse("circle");
+                LoadNoteChart(++chartPosition);
                 lastTime += timePerMeasure / subdivisions;
                 subdivisions = newSubdivs;
+                fourthBeat = lastTime + ((timePerMeasure / subdivisions) * 2);
+                //Debug.Log("Count = " + count + " Time = " + lastTime);              
                 count = 1;
             }
-
             UIUpdate();
         }
     }
@@ -172,7 +169,6 @@ public class Conductor : MonoBehaviour
     {
         if (type == "block")
         {
-
             block.transform.localScale = block.transform.localScale + new Vector3(.1f, .1f, .1f);
             circle.transform.localScale = circle.transform.localScale - new Vector3(.1f, .1f, .1f);
 
@@ -180,10 +176,7 @@ public class Conductor : MonoBehaviour
         else if (type == "circle")
         {
             block.transform.localScale = block.transform.localScale - new Vector3( .1f, .1f, .1f);
-            circle.transform.localScale = circle.transform.localScale + new Vector3(.1f, .1f, .1f); ;
-
-            chartPosition++;
-            LoadNoteChart(chartPosition);
+            circle.transform.localScale = circle.transform.localScale + new Vector3(.1f, .1f, .1f);
         }
     }
 
